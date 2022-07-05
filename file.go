@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 func isExist(filename string) bool {
@@ -134,4 +137,14 @@ func (f *File) Close() {
 	}
 	f.Sync()
 	_ = f.FileHandler.Close()
+}
+
+func GetExcPath() string {
+	file, _ := exec.LookPath(os.Args[0])
+	// 获取包含可执行文件名称的路径
+	path, _ := filepath.Abs(file)
+	// 获取可执行文件所在目录
+	index := strings.LastIndex(path, string(os.PathSeparator))
+	ret := path[:index]
+	return strings.Replace(ret, "\\", "/", -1) + "/"
 }
