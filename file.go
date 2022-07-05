@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func IsExist(filename string) bool {
+func isExist(filename string) bool {
 	var exist = true
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		exist = false
@@ -18,7 +18,7 @@ func IsExist(filename string) bool {
 func CreateFile(filename string) (*os.File, error) {
 	var err error
 	var filehandle *os.File
-	if IsExist(filename) { //如果文件存在
+	if isExist(filename) { //如果文件存在
 		return nil, errors.New("File already exists")
 	} else {
 		filehandle, err = os.Create(filename) //创建文件
@@ -32,7 +32,7 @@ func CreateFile(filename string) (*os.File, error) {
 func AppendFile(filename string) (*os.File, error) {
 	var err error
 	var filehandle *os.File
-	if IsExist(filename) { //如果文件存在
+	if isExist(filename) { //如果文件存在
 		filehandle, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return nil, err
