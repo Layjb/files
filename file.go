@@ -74,7 +74,6 @@ func NewFile(filename string, compress, lazy, append bool) (*File, error) {
 						return
 					}
 				}
-
 				file.Write(file.Handler(s))
 			}
 		}
@@ -83,6 +82,7 @@ func NewFile(filename string, compress, lazy, append bool) (*File, error) {
 			file.Write(file.ClosedAppend)
 		}
 		file.Sync()
+		file.FileHandler.Close()
 	}()
 
 	return file, nil
@@ -170,8 +170,6 @@ func (f *File) Close() {
 	if f.FileHandler == nil {
 		return
 	}
-	f.Sync()
-	_ = f.FileHandler.Close()
 }
 
 func GetExcPath() string {
