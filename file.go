@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func CreateFile(filename string) (*os.File, error) {
@@ -78,11 +79,13 @@ func NewFile(filename string, compress, lazy, append bool) (*File, error) {
 			}
 		}
 
-		if file.ClosedAppend != "" {
-			file.Write(file.ClosedAppend)
+		if file.FileHandler != nil {
+			if file.ClosedAppend != "" {
+				file.Write(file.ClosedAppend)
+			}
+			file.Sync()
+			file.FileHandler.Close()
 		}
-		file.Sync()
-		file.FileHandler.Close()
 	}()
 
 	return file, nil
@@ -167,9 +170,7 @@ func (f *File) Sync() {
 
 func (f *File) Close() {
 	close(f.DataCh)
-	if f.FileHandler == nil {
-		return
-	}
+	time.Sleep(200)
 }
 
 func GetExcPath() string {
