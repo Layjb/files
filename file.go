@@ -4,24 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-func isExist(filename string) bool {
-	var exist = true
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		exist = false
-	}
-	return exist
-}
-
 func CreateFile(filename string) (*os.File, error) {
 	var err error
 	var filehandle *os.File
-	if isExist(filename) { //如果文件存在
+	if _, err := os.Stat(filename); err == nil { //如果文件存在
 		return nil, errors.New("File already exists")
 	} else {
 		filehandle, err = os.Create(filename) //创建文件
@@ -35,7 +28,7 @@ func CreateFile(filename string) (*os.File, error) {
 func AppendFile(filename string) (*os.File, error) {
 	var err error
 	var filehandle *os.File
-	if isExist(filename) { //如果文件存在
+	if _, err := os.Stat(filename); err == nil { //如果文件存在
 		filehandle, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return nil, err
@@ -53,8 +46,14 @@ func NewFile(filename string, compress, lazy, append bool) (*File, error) {
 	var file = &File{
 		Filename: filename,
 		compress: compress,
+		append:   append,
 		buf:      bytes.NewBuffer([]byte{}),
+		DataCh:   make(chan string, 100),
+		Handler: func(s string) string {
+			return s
+		},
 	}
+
 	if !lazy {
 		err := file.Init()
 		if err != nil {
@@ -62,17 +61,44 @@ func NewFile(filename string, compress, lazy, append bool) (*File, error) {
 		}
 	}
 
+	go func() {
+		for s := range file.DataCh {
+			switch s {
+			case "sync":
+				file.Sync()
+			default:
+				if !file.Initialized {
+					err := file.Init()
+					if err != nil {
+						fmt.Println(file.Filename + err.Error())
+						return
+					}
+				}
+
+				file.Write(file.Handler(s))
+			}
+		}
+
+		if file.ClosedAppend != "" {
+			file.Write(file.ClosedAppend)
+		}
+		file.Sync()
+	}()
+
 	return file, nil
 }
 
 type File struct {
-	Filename    string
-	Initialized bool
-	FileHandler *os.File
-	fileWriter  *bufio.Writer
-	buf         *bytes.Buffer
-	compress    bool
-	append      bool
+	Filename     string
+	Initialized  bool
+	FileHandler  *os.File
+	DataCh       chan string
+	Handler      func(string) string
+	ClosedAppend string
+	fileWriter   *bufio.Writer
+	buf          *bytes.Buffer
+	compress     bool
+	append       bool
 }
 
 func (f *File) Init() error {
@@ -92,6 +118,14 @@ func (f *File) Init() error {
 		f.fileWriter = bufio.NewWriter(f.FileHandler)
 	}
 	return nil
+}
+
+func (f *File) SafeWrite(s string) {
+	f.DataCh <- s
+}
+
+func (f *File) SafeSync() {
+	f.DataCh <- "sync"
 }
 
 func (f *File) Write(s string) {
@@ -132,6 +166,7 @@ func (f *File) Sync() {
 }
 
 func (f *File) Close() {
+	close(f.DataCh)
 	if f.FileHandler == nil {
 		return
 	}
