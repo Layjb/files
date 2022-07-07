@@ -159,7 +159,7 @@ func (f *File) Sync() {
 	}
 
 	if f.encode {
-		_, _ = f.fileWriter.Write(Flate(f.buf.Bytes()))
+		_, _ = f.fileWriter.Write(f.Encoder(f.buf.Bytes()))
 	} else {
 		_, _ = f.fileWriter.Write(f.buf.Bytes())
 	}
