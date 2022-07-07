@@ -43,16 +43,17 @@ func AppendFile(filename string) (*os.File, error) {
 	return filehandle, err
 }
 
-func NewFile(filename string, compress, lazy, append bool) (*File, error) {
+func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 	var file = &File{
 		Filename: filename,
-		compress: compress,
+		encode:   encode,
 		append:   append,
 		buf:      bytes.NewBuffer([]byte{}),
 		DataCh:   make(chan string, 100),
 		Handler: func(s string) string {
 			return s
 		},
+		Encoder: Flate,
 	}
 
 	if !lazy {
@@ -97,10 +98,11 @@ type File struct {
 	FileHandler  *os.File
 	DataCh       chan string
 	Handler      func(string) string
+	Encoder      func([]byte) []byte
 	ClosedAppend string
 	fileWriter   *bufio.Writer
 	buf          *bytes.Buffer
-	compress     bool
+	encode       bool
 	append       bool
 }
 
@@ -156,7 +158,7 @@ func (f *File) Sync() {
 		return
 	}
 
-	if f.compress {
+	if f.encode {
 		_, _ = f.fileWriter.Write(Flate(f.buf.Bytes()))
 	} else {
 		_, _ = f.fileWriter.Write(f.buf.Bytes())
