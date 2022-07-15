@@ -100,6 +100,7 @@ type File struct {
 	Handler      func(string) string
 	Encoder      func([]byte) []byte
 	ClosedAppend string
+	Closed       bool
 	fileWriter   *bufio.Writer
 	buf          *bytes.Buffer
 	encode       bool
@@ -126,11 +127,15 @@ func (f *File) Init() error {
 }
 
 func (f *File) SafeWrite(s string) {
-	f.DataCh <- s
+	if !f.Closed {
+		f.DataCh <- s
+	}
 }
 
 func (f *File) SafeSync() {
-	f.DataCh <- "sync"
+	if !f.Closed {
+		f.DataCh <- "sync"
+	}
 }
 
 func (f *File) Write(s string) {
@@ -173,6 +178,8 @@ func (f *File) Sync() {
 func (f *File) Close() {
 	close(f.DataCh)
 	time.Sleep(200)
+	_ = f.FileHandler.Close()
+	f.Closed = true
 }
 
 func GetExcPath() string {
