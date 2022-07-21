@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
+	"sync"
 )
 
 func CreateFile(filename string) (*os.File, error) {
@@ -68,6 +68,7 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 			switch s {
 			case "sync":
 				file.Sync()
+				file.wg.Done()
 			default:
 				if !file.Initialized {
 					err := file.Init()
@@ -77,6 +78,7 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 					}
 				}
 				file.Write(file.Handler(s))
+				file.wg.Done()
 			}
 		}
 
@@ -101,6 +103,7 @@ type File struct {
 	Encoder      func([]byte) []byte
 	ClosedAppend string
 	Closed       bool
+	wg           sync.WaitGroup
 	fileWriter   *bufio.Writer
 	buf          *bytes.Buffer
 	encode       bool
@@ -128,12 +131,14 @@ func (f *File) Init() error {
 
 func (f *File) SafeWrite(s string) {
 	if !f.Closed {
+		f.wg.Add(1)
 		f.DataCh <- s
 	}
 }
 
 func (f *File) SafeSync() {
 	if !f.Closed {
+		f.wg.Add(1)
 		f.DataCh <- "sync"
 	}
 }
@@ -176,8 +181,9 @@ func (f *File) Sync() {
 }
 
 func (f *File) Close() {
+	f.SafeSync()
+	f.wg.Wait()
 	close(f.DataCh)
-	time.Sleep(200)
 	_ = f.FileHandler.Close()
 	f.Closed = true
 }
