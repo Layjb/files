@@ -82,12 +82,12 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 			}
 		}
 
-		if file.FileHandler != nil {
+		if file.fileHandler != nil {
 			if file.ClosedAppend != "" {
 				file.Write(file.ClosedAppend)
 			}
 			file.Sync()
-			file.FileHandler.Close()
+			file.fileHandler.Close()
 		}
 	}()
 
@@ -97,34 +97,37 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 type File struct {
 	Filename     string
 	Initialized  bool
-	FileHandler  *os.File
+	InitSuccess  bool
 	DataCh       chan string
 	Handler      func(string) string
 	Encoder      func([]byte) []byte
 	ClosedAppend string
 	Closed       bool
-	wg           sync.WaitGroup
-	fileWriter   *bufio.Writer
-	buf          *bytes.Buffer
-	encode       bool
-	append       bool
+
+	fileHandler *os.File
+	wg          sync.WaitGroup
+	fileWriter  *bufio.Writer
+	buf         *bytes.Buffer
+	encode      bool
+	append      bool
 }
 
 func (f *File) Init() error {
-	if f.FileHandler == nil {
+	if f.fileHandler == nil {
 		var err error
 		// 防止初始化失败之后重复初始化, flag提前设置为true
 		f.Initialized = true
 
 		if f.append {
-			f.FileHandler, err = AppendFile(f.Filename)
+			f.fileHandler, err = AppendFile(f.Filename)
 		} else {
-			f.FileHandler, err = CreateFile(f.Filename)
+			f.fileHandler, err = CreateFile(f.Filename)
 		}
 		if err != nil {
 			return err
 		}
-		f.fileWriter = bufio.NewWriter(f.FileHandler)
+		f.InitSuccess = true
+		f.fileWriter = bufio.NewWriter(f.fileHandler)
 	}
 	return nil
 }
@@ -164,7 +167,7 @@ func (f *File) WriteBytes(bs []byte) {
 }
 
 func (f *File) Sync() {
-	if f.FileHandler == nil || f.buf.Len() == 0 {
+	if f.fileHandler == nil || f.buf.Len() == 0 {
 		return
 	}
 
@@ -176,7 +179,6 @@ func (f *File) Sync() {
 	//Log.Debugf("sync %d bytes to %s", f.buf.Len(), f.Filename)
 	f.buf.Reset()
 	_ = f.fileWriter.Flush()
-	_ = f.FileHandler.Sync()
 	return
 }
 
@@ -184,7 +186,7 @@ func (f *File) Close() {
 	f.SafeSync()
 	f.wg.Wait()
 	close(f.DataCh)
-	_ = f.FileHandler.Close()
+	_ = f.fileHandler.Close()
 	f.Closed = true
 }
 
