@@ -66,7 +66,13 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 	go func() {
 		for s := range file.DataCh {
 			switch s {
-			case "sync":
+			case "!!sync":
+				file.Sync()
+				file.wg.Done()
+			case "!!close":
+				if file.ClosedAppend != "" {
+					file.Write(file.ClosedAppend)
+				}
 				file.Sync()
 				file.wg.Done()
 			default:
@@ -83,12 +89,9 @@ func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 		}
 
 		if file.fileHandler != nil {
-			if file.ClosedAppend != "" {
-				file.Write(file.ClosedAppend)
-			}
-			file.Sync()
 			file.fileHandler.Close()
 		}
+		file.wg.Done()
 	}()
 
 	return file, nil
@@ -142,7 +145,7 @@ func (f *File) SafeWrite(s string) {
 func (f *File) SafeSync() {
 	if !f.Closed {
 		f.wg.Add(1)
-		f.DataCh <- "sync"
+		f.DataCh <- "!!sync"
 	}
 }
 
@@ -176,17 +179,21 @@ func (f *File) Sync() {
 	} else {
 		_, _ = f.fileWriter.Write(f.buf.Bytes())
 	}
-	//Log.Debugf("sync %d bytes to %s", f.buf.Len(), f.Filename)
+
 	f.buf.Reset()
 	_ = f.fileWriter.Flush()
 	return
 }
 
 func (f *File) Close() {
-	f.SafeSync()
+	f.wg.Add(1)
+	f.DataCh <- "!!close"
 	f.wg.Wait()
+
+	f.wg.Add(1)
 	close(f.DataCh)
-	_ = f.fileHandler.Close()
+	f.wg.Wait()
+
 	f.Closed = true
 }
 
