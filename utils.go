@@ -105,6 +105,25 @@ func GetExcPath() string {
 
 var Key = []byte{}
 
+func DecryptFile(file *os.File, keys []byte) ([]byte, error) {
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	decoded, err := base64.StdEncoding.DecodeString(string(content))
+	if err == nil {
+		// try to base64 decode, if decode successfully, return data
+		return decoded, nil
+	}
+	// else try to unflate
+	content = XorEncode(content, keys, 0)
+	if unflated := UnFlate(content); len(unflated) == 0 {
+		return nil, fmt.Errorf("unflate failed")
+	} else {
+		return unflated, nil
+	}
+}
+
 func LoadCommonArg(arg string) ([]byte, error) {
 	var content []byte
 	f, err := Open(arg)
@@ -117,20 +136,5 @@ func LoadCommonArg(arg string) ([]byte, error) {
 			return content, nil
 		}
 	}
-	content, err = ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	decoded, err := base64.StdEncoding.DecodeString(string(content))
-	if err == nil {
-		// try to base64 decode, if decode successfully, return data
-		return decoded, nil
-	}
-	// else try to unflate
-	content = XorEncode(content, Key, 0)
-	if unflated := UnFlate(content); len(unflated) == 0 {
-		return nil, fmt.Errorf("unflate failed")
-	} else {
-		return unflated, nil
-	}
+	return DecryptFile(f, Key)
 }
