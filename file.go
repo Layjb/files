@@ -3,45 +3,10 @@ package files
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 	"sync"
 )
-
-func CreateFile(filename string) (*os.File, error) {
-	var err error
-	var filehandle *os.File
-	if _, err := os.Stat(filename); err == nil { //如果文件存在
-		return nil, errors.New("File already exists")
-	} else {
-		filehandle, err = os.Create(filename) //创建文件
-		if err != nil {
-			return nil, err
-		}
-	}
-	return filehandle, err
-}
-
-func AppendFile(filename string) (*os.File, error) {
-	var err error
-	var filehandle *os.File
-	if _, err := os.Stat(filename); err == nil { //如果文件存在
-		filehandle, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		filehandle, err = os.Create(filename) //创建文件
-		if err != nil {
-			return nil, err
-		}
-	}
-	return filehandle, err
-}
 
 func NewFile(filename string, encode, lazy, append bool) (*File, error) {
 	var file = &File{
@@ -195,14 +160,4 @@ func (f *File) Close() {
 	f.wg.Wait()
 
 	f.Closed = true
-}
-
-func GetExcPath() string {
-	file, _ := exec.LookPath(os.Args[0])
-	// 获取包含可执行文件名称的路径
-	path, _ := filepath.Abs(file)
-	// 获取可执行文件所在目录
-	index := strings.LastIndex(path, string(os.PathSeparator))
-	ret := path[:index]
-	return strings.Replace(ret, "\\", "/", -1) + "/"
 }
