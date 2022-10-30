@@ -5,7 +5,6 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -105,35 +104,33 @@ func GetExcPath() string {
 
 var Key = []byte{}
 
-func DecryptFile(file *os.File, keys []byte) ([]byte, error) {
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
+func DecryptFile(file *os.File, keys []byte) []byte {
+	content, _ := ioutil.ReadAll(file)
+
 	decoded, err := base64.StdEncoding.DecodeString(string(content))
 	if err == nil {
 		// try to base64 decode, if decode successfully, return data
-		return decoded, nil
+		return bytes.TrimSpace(decoded)
 	}
 	// else try to unflate
-	content = XorEncode(content, keys, 0)
-	if unflated := UnFlate(content); len(unflated) == 0 {
-		return nil, fmt.Errorf("unflate failed")
+	decrypted := XorEncode(content, keys, 0)
+	if unflated := UnFlate(decrypted); len(unflated) == 0 {
+		return bytes.TrimSpace(content)
 	} else {
-		return unflated, nil
+		return bytes.TrimSpace(unflated)
 	}
 }
 
-func LoadCommonArg(arg string) ([]byte, error) {
+func LoadCommonArg(arg string) []byte {
 	var content []byte
 	f, err := Open(arg)
 	if err != nil {
 		// if open not found , try base64 decode
 		content, err = base64.StdEncoding.DecodeString(arg)
 		if err != nil {
-			return []byte(arg), nil
+			return []byte(arg)
 		} else {
-			return content, nil
+			return content
 		}
 	}
 	return DecryptFile(f, Key)
