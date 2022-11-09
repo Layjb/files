@@ -114,8 +114,8 @@ func DecryptFile(file *os.File, keys []byte) []byte {
 	}
 	// else try to unflate
 	decrypted := XorEncode(content, keys, 0)
-	if unflated := UnFlate(decrypted); len(unflated) == 0 {
-		return bytes.TrimSpace(content)
+	if unflated := UnFlate(decrypted); len(unflated) < len(content)/10 {
+		return content
 	} else {
 		return bytes.TrimSpace(unflated)
 	}
