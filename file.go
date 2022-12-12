@@ -8,13 +8,14 @@ import (
 	"sync"
 )
 
-func NewFile(filename string, encode, lazy, append bool) (*File, error) {
+func NewFile(filename string, encode, lazy, overwrite bool) (*File, error) {
 	var file = &File{
-		Filename: filename,
-		encode:   encode,
-		append:   append,
-		buf:      bytes.NewBuffer([]byte{}),
-		DataCh:   make(chan string, 100),
+		Filename:  filename,
+		Mod:       os.O_APPEND | os.O_WRONLY | os.O_CREATE,
+		encode:    encode,
+		overwrite: overwrite,
+		buf:       bytes.NewBuffer([]byte{}),
+		DataCh:    make(chan string, 100),
 		Handler: func(s string) string {
 			return s
 		},
@@ -71,13 +72,14 @@ type File struct {
 	Encoder      func([]byte) []byte
 	ClosedAppend string
 	Closed       bool
+	Mod          int
 
 	fileHandler *os.File
 	wg          sync.WaitGroup
 	fileWriter  *bufio.Writer
 	buf         *bytes.Buffer
 	encode      bool
-	append      bool
+	overwrite   bool
 }
 
 func (f *File) Init() error {
@@ -86,8 +88,8 @@ func (f *File) Init() error {
 		// 防止初始化失败之后重复初始化, flag提前设置为true
 		f.Initialized = true
 
-		if f.append {
-			f.fileHandler, err = AppendFile(f.Filename)
+		if f.overwrite {
+			f.fileHandler, err = OverWriteFile(f.Filename, f.Mod)
 		} else {
 			f.fileHandler, err = CreateFile(f.Filename)
 		}

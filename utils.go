@@ -61,11 +61,11 @@ func CreateFile(filename string) (*os.File, error) {
 	return filehandle, err
 }
 
-func AppendFile(filename string) (*os.File, error) {
+func OverWriteFile(filename string, mod int) (*os.File, error) {
 	var err error
 	var filehandle *os.File
 	if _, err := os.Stat(filename); err == nil { //如果文件存在
-		filehandle, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		filehandle, err = os.OpenFile(filename, mod, 0600)
 		if err != nil {
 			return nil, err
 		}
