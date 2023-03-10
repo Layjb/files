@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -114,10 +115,11 @@ func DecryptFile(file *os.File, keys []byte) []byte {
 	}
 	// else try to unflate
 	decrypted := XorEncode(content, keys, 0)
-	if unflated := UnFlate(decrypted); len(unflated) < len(content)/10 {
+	if shannonEntropy(content) < 5.5 {
+		// 使用香农熵判断是否是deflate后的文件, 测试了几个数据集, 数据量较大的时候接近4, 数据量较小时接近5. deflate后的文件大多都在6以上
 		return content
 	} else {
-		return bytes.TrimSpace(unflated)
+		return bytes.TrimSpace(UnFlate(decrypted))
 	}
 }
 
@@ -134,4 +136,20 @@ func LoadCommonArg(arg string) []byte {
 		}
 	}
 	return DecryptFile(f, Key)
+}
+
+func shannonEntropy(data []byte) float64 {
+	freq := make(map[byte]int)
+	for _, b := range data {
+		freq[b]++
+	}
+
+	entropy := 0.0
+	dataLength := len(data)
+	for _, count := range freq {
+		freqRatio := float64(count) / float64(dataLength)
+		entropy -= freqRatio * math.Log2(freqRatio)
+	}
+
+	return entropy
 }
