@@ -124,6 +124,10 @@ func (f *File) Write(s string) {
 	return
 }
 
+func (f *File) WriteLine(s string) {
+	f.Write(s + "\n")
+}
+
 func (f *File) SyncWrite(s string) {
 	f.Write(s)
 	f.Sync()
