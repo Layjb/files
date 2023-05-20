@@ -5,6 +5,7 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"errors"
+	"io"
 	"io/ioutil"
 	"math"
 	"os"
@@ -105,7 +106,7 @@ func GetExcPath() string {
 
 var Key = []byte{}
 
-func DecryptFile(file *os.File, keys []byte) []byte {
+func DecryptFile(file io.Reader, keys []byte) []byte {
 	content, _ := ioutil.ReadAll(file)
 
 	decoded, err := base64.StdEncoding.DecodeString(string(content))
