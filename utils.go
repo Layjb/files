@@ -107,8 +107,10 @@ func GetExcPath() string {
 var Key = []byte{}
 
 func DecryptFile(file io.Reader, keys []byte) []byte {
-	content, _ := ioutil.ReadAll(file)
-
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		println(err.Error())
+	}
 	decoded, err := base64.StdEncoding.DecodeString(string(content))
 	if err == nil {
 		// try to base64 decode, if decode successfully, return data
