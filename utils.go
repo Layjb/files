@@ -168,3 +168,11 @@ func HasStdin() bool {
 
 	return isPipedFromChrDev || isPipedFromFIFO
 }
+
+func IsExist(filename string) bool {
+	var exist = true
+	if _, err := os.Stat(filename); err != nil {
+		exist = false
+	}
+	return exist
+}
