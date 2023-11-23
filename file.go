@@ -37,7 +37,7 @@ func NewFile(filename string, encode, lazy, overwrite bool) (*File, error) {
 				file.wg.Done()
 			case "!!close":
 				if file.ClosedAppend != "" {
-					file.Write(file.ClosedAppend)
+					file.WriteString(file.ClosedAppend)
 				}
 				file.Sync()
 				file.wg.Done()
@@ -49,7 +49,7 @@ func NewFile(filename string, encode, lazy, overwrite bool) (*File, error) {
 						return
 					}
 				}
-				file.Write(file.Handler(s))
+				file.WriteString(file.Handler(s))
 				file.wg.Done()
 			}
 		}
@@ -116,20 +116,34 @@ func (f *File) SafeSync() {
 	}
 }
 
-func (f *File) Write(s string) {
-	_, _ = f.buf.WriteString(s)
+func (f *File) Write(p []byte) (n int, err error) {
+	n, err = f.buf.Write(p)
+	if err != nil {
+		return n, err
+	}
 	if f.buf.Len() > 4096 {
 		f.Sync()
 	}
-	return
+	return len(p), nil
+}
+
+func (f *File) WriteString(s string) (n int, err error) {
+	n, err = f.buf.WriteString(s)
+	if err != nil {
+		return n, err
+	}
+	if f.buf.Len() > 4096 {
+		f.Sync()
+	}
+	return len(s), nil
 }
 
 func (f *File) WriteLine(s string) {
-	f.Write(s + "\n")
+	f.WriteString(s + "\n")
 }
 
 func (f *File) SyncWrite(s string) {
-	f.Write(s)
+	f.WriteString(s)
 	f.Sync()
 }
 
