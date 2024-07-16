@@ -2,9 +2,9 @@ package files
 
 import (
 	"bytes"
-	"compress/flate"
 	"encoding/base64"
 	"errors"
+	"github.com/chainreactors/utils/encode"
 	"io"
 	"io/ioutil"
 	"math"
@@ -14,40 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 )
-
-func Flate(input []byte) []byte {
-	var bf = bytes.NewBuffer([]byte{})
-	var flater, _ = flate.NewWriter(bf, flate.BestCompression)
-	defer flater.Close()
-	if _, err := flater.Write(input); err != nil {
-		println(err.Error())
-		return []byte{}
-	}
-	if err := flater.Flush(); err != nil {
-		println(err.Error())
-		return []byte{}
-	}
-	return bf.Bytes()
-}
-
-func UnFlate(input []byte) []byte {
-	rdata := bytes.NewReader(input)
-	r := flate.NewReader(rdata)
-	s, _ := ioutil.ReadAll(r)
-	return s
-}
-
-func XorEncode(bs []byte, keys []byte, cursor int) []byte {
-	if len(keys) == 0 {
-		return bs
-	}
-
-	newbs := make([]byte, len(bs))
-	for i, b := range bs {
-		newbs[i] = b ^ keys[(i+cursor)%len(keys)]
-	}
-	return newbs
-}
 
 func CreateFile(filename string) (*os.File, error) {
 	var err error
@@ -117,12 +83,12 @@ func DecryptFile(file io.Reader, keys []byte) []byte {
 		return bytes.TrimSpace(decoded)
 	}
 	// else try to unflate
-	decrypted := XorEncode(content, keys, 0)
+	decrypted := encode.XorEncode(content, keys, 0)
 	if shannonEntropy(content) < 5.5 {
 		// 使用香农熵判断是否是deflate后的文件, 测试了几个数据集, 数据量较大的时候接近4, 数据量较小时接近5. deflate后的文件大多都在6以上
 		return content
 	} else {
-		return bytes.TrimSpace(UnFlate(decrypted))
+		return bytes.TrimSpace(encode.MustDeflateDeCompress(decrypted))
 	}
 }
 

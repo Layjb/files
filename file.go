@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	en "github.com/chainreactors/utils/encode"
 	"os"
 	"sync"
 )
@@ -19,7 +20,7 @@ func NewFile(filename string, encode, lazy, overwrite bool) (*File, error) {
 		Handler: func(s string) string {
 			return s
 		},
-		Encoder: Flate,
+		Encoder: en.MustDeflateDeCompress,
 	}
 
 	if !lazy {
