@@ -1,4 +1,4 @@
-module github.com/chainreactors/files
+module github.com/Layjb/files
 
 go 1.10
 
